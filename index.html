@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Title</title>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-jsonview/1.2.3/jquery.jsonview.css" integrity="sha512-6dqKyKlSER24gVyNQkP3cUfIaA5OfAEHxDBRiElKxSmlZTTdY6Z7uiUW5pADcTzqjEmli6Dv+IuTPsMLuFPeBg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://unpkg.com/@geoapify/geocoder-autocomplete@^1/styles/minimal.css">
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/@geoapify/geocoder-autocomplete@^1/styles/minimal.css">
+ <style>
+  .hidden{
+    display: none;
+  }
+ </style>
+  </head>
+  <body onload="onWindowLoaded()">
+    <div class="container-sm mt-5">
+      <form action="/route" method="post">
+        <div class="row d-flex justify-content-center align-items-center">
+          <div>
+            <select name="start" class="start_loc">
+              <option selected>Choose starting city</option>
+            </select>
+          </div>
+          <div class="ml-5">
+            <select name="end" class="end_loc">
+              <option selected>Choose ending city</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-3"  style="text-align: center;">
+          <button type="submit" class="btn btn-primary" role="button" aria-disabled="true">Search</button>
+        </div>
+      </form>
+    </div>
+    
+    <div class="container-sm mt-5">
+        <div class="row d-flex justify-content-center align-items-center">
+          <div class="input-group mb-3" style="width: 35%">
+            <input onblur="onCompleteTypePlace(this, event)" type="text"  class="form-control" placeholder="Ở dưới xịn hơn" aria-label="Place name:" aria-describedby="basic-addon2">
+            <div class="input-group-append">
+              <button class="btn btn-outline-secondary hidden" type="button" data-toggle="modal" data-target="#exampleModal">View props</button>
+            </div>
+          </div>        
+        </div>
+    </div>
+
+    <div class="container-sm mt-5">
+      <div class="row d-flex justify-content-center align-items-center">
+        <div id="autocomplete" class="autocomplete-container" style="position: relative; width: 40%;"></div>
+        <button id="showProp" class="btn btn-primary" disabled type="button" data-toggle="modal" data-target="#exampleModal">View props</button>
+      </div>
+  </div>
+
+    
+    <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="modalTitle" aria-hidden="true">
+      <div class="modal-dialog" style="max-width: 75%;" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalTitle"></h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body" id="modalBody">
+            <pre id="json-container"></pre>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.min.js" integrity="sha512-3gJwYpMe3QewGELv8k/BX9vcqhryRdzRMxVfq6ngyWXwo03GFEzjsUm8Q7RZcHPHksttq7/GFoxjCVUjkjvPdw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-jsonview/1.2.3/jquery.jsonview.min.js" integrity="sha512-ff/E/8AEnLDXnTCyIa+l80evPRNH8q5XnPGY/NgBL645jzHL1ksmXonVMDt7e5D34Y4DTOv+P+9Rmo9jBSSyIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://unpkg.com/@geoapify/geocoder-autocomplete@^1/dist/index.min.js"></script>
+  <script>
+      const geoapify = "2e8f62d864414a2780fdcbcf30589685"
+      function onWindowLoaded(){
+        let startSelectEle = document.querySelector(".start_loc")
+        let endSelectEle = document.querySelector(".end_loc")
+        $.get("https://provinces.open-api.vn/api/?depth=1", function(data, status){
+          for(let city of data){
+            let cityName = city.name
+            let optionStr = `<option  value="${cityName}">${cityName}</option>`
+            let ele = generateHtmlEle(optionStr)
+            let ele2 = ele.cloneNode(true)
+            startSelectEle.appendChild(ele)
+            endSelectEle.appendChild(ele2)
+          }
+        });
+      }
+      function generateHtmlEle(htmlStr){
+        let div = document.createElement(`div`)
+        div.innerHTML = htmlStr
+        return div.firstElementChild
+      }
+      function onCompleteTypePlace(t,e){
+        let showPropsBtn = t.parentNode.querySelector(".btn")
+        let modalTitle = document.querySelector("#modalTitle")
+        let jsonContainer = document.querySelector("#json-container")
+        modalTitle.textContent = t.value
+        $.get(`https://api.geoapify.com/v1/geocode/search?text=${t.value}&apiKey=${geoapify}`,function(data, status){
+            const placeID = data.features[0].properties.place_id
+            $.get(`https://api.geoapify.com/v2/place-details?id=${placeID}&features=details,details.names&apiKey=${geoapify}`,function(data,status){
+             
+              $("#json-container").JSONView(data.features[0].properties);
+            })
+        })
+        showPropsBtn.classList.remove("hidden")
+      }
+      const autocompleteInput = new autocomplete.GeocoderAutocomplete(
+                        document.getElementById("autocomplete"), 
+                        `${geoapify}`, 
+                        { 
+                          bounds: { //giới hạn lãnh thổ việt nam (đỡ seach ra địa chỉ nc ngoài)
+                            south: 8.175093,
+                            west: 102.144033,
+                            north: 23.393395,
+                            east: 109.469721,
+                          },
+                         });
+
+      autocompleteInput.on('select', (location) => {
+        let showPropsBtn = document.querySelector("#showProp")
+        let modalTitle = document.querySelector("#modalTitle")
+        let jsonContainer = document.querySelector("#json-container")
+        if(!location)
+          return showPropsBtn.setAttribute("disabled")
+        modalTitle.textContent = location.properties.name
+        $("#json-container").JSONView(location.properties);
+        showPropsBtn.removeAttribute("disabled")
+      });
+
+    autocompleteInput.on('suggestions', (suggestions) => {
+        // process suggestions here
+    });
+</script>
+
+  </body>
+
+  
+</html>
